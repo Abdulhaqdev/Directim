@@ -251,6 +251,21 @@ async def health():
     return {"ok": True, "ai": agent.ai is not None, "profillar": len(agent.profiles)}
 
 
+# Ochiq sahifalar: Meta ilovani Live qilish va App Review uchun Privacy Policy va Data Deletion manzillarini so'raydi
+@app.get("/privacy")
+async def privacy_page(request: Request):
+    return templates.TemplateResponse(request, "legal.html", {
+        "page": "privacy", "business": env.business_name, "email": env.contact_email,
+        "base_url": env.public_url or str(request.base_url).rstrip("/")})
+
+
+@app.get("/data-deletion")
+async def data_deletion_page(request: Request):
+    return templates.TemplateResponse(request, "legal.html", {
+        "page": "deletion", "business": env.business_name, "email": env.contact_email,
+        "base_url": env.public_url or str(request.base_url).rstrip("/")})
+
+
 # ===================== Panel =====================
 SESSION_COOKIE = "sotuv_agent"
 

@@ -54,6 +54,9 @@ class Env:
     site_sync_hours: int = int(os.getenv("SITE_SYNC_HOURS", "24"))           # saytlardan narxlarni yangilash
     # Panel
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
+    # Maxfiylik siyosati sahifasidagi aloqa (Meta App Review uchun ochiq sahifa)
+    contact_email: str = os.getenv("CONTACT_EMAIL", "")
+    business_name: str = os.getenv("BUSINESS_NAME", "Sotuv agenti")
     db_path: str = os.getenv("DB_PATH", str(ROOT / "data" / "agent.db"))
     reply_debounce_seconds: float = float(os.getenv("REPLY_DEBOUNCE_SECONDS", "4"))
 

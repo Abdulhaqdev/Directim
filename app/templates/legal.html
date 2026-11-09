@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if page == "privacy" %}Privacy Policy{% else %}Data Deletion{% endif %} — {{ business }}</title>
+<style>
+:root{--bg:#f5f6f8;--surface:#fff;--text:#0f172a;--muted:#64748b;--line:#e6e8ec;--accent:#0e9f6e}
+@media (prefers-color-scheme:dark){:root{--bg:#0c1113;--surface:#141b1e;--text:#e6edf0;--muted:#94a3ab;--line:#253036;--accent:#34d399}}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;padding:24px 16px}
+main{max-width:760px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px}
+h1{margin:0 0 4px;font-size:26px}h2{margin:28px 0 8px;font-size:19px}
+.muted{color:var(--muted)}a{color:var(--accent)}
+nav{margin-bottom:18px;font-size:14px}nav a{margin-right:14px}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+</style></head><body><main>
+<nav><a href="/privacy">Privacy Policy</a><a href="/data-deletion">Data Deletion</a></nav>
+{% set contact %}{% if email %}<a href="mailto:{{ email }}">{{ email }}</a>{% else %}a direct message to our Instagram account{% endif %}{% endset %}
+{% set contact_uz %}{% if email %}<a href="mailto:{{ email }}">{{ email }}</a> manziliga{% else %}Instagram sahifamizga Direct orqali{% endif %}{% endset %}
+
+{% if page == "privacy" %}
+<h1>Privacy Policy</h1>
+<p class="muted">{{ business }} · Last updated: 10 November 2026</p>
+
+<p>{{ business }} uses an automated assistant to answer messages and comments sent to our own Instagram business accounts. This policy explains what data we process and why.</p>
+
+<h2>What data we receive</h2>
+<ul>
+  <li>Your Instagram username and the Instagram-scoped ID that Meta provides to us.</li>
+  <li>The messages, comments and images you send to our Instagram accounts.</li>
+  <li>Your phone number and city, only if you choose to share them to place an order.</li>
+</ul>
+
+<h2>How we use it</h2>
+<ul>
+  <li>To answer your questions about our products, prices and delivery.</li>
+  <li>To pass your order request (name, phone number, product) to our sales team so they can contact you.</li>
+  <li>Message text is processed by an AI service (Anthropic Claude) only to generate replies. We do not use your data for advertising and we do not sell it.</li>
+</ul>
+
+<h2>Sharing</h2>
+<p>Your order request is shared only with our own sales staff through a private Telegram group. We do not share your data with other third parties, except the service providers named above, which process it on our behalf.</p>
+
+<h2>Storage and retention</h2>
+<p>Data is stored on our own server. Conversations are kept only as long as needed to answer you and handle your orders. You can ask us to delete them at any time.</p>
+
+<h2>Your rights</h2>
+<p>You can ask us to see or delete your data at any time. See <a href="/data-deletion">Data Deletion</a> or contact us at {{ contact }}.</p>
+
+<hr>
+<h1>Maxfiylik siyosati</h1>
+<p>{{ business }} o'z Instagram biznes sahifalariga yozilgan xabar va kommentlarga avtomatik yordamchi orqali javob beradi.</p>
+<ul>
+  <li><b>Qanday ma'lumot olamiz:</b> Instagram username, xabar, komment va rasmlaringiz; buyurtma bermoqchi bo'lsangiz — telefon raqamingiz va shahringiz.</li>
+  <li><b>Nima uchun:</b> savollaringizga javob berish va buyurtmangizni sotuv bo'limiga yetkazish. Xabar matni javob tayyorlash uchun AI xizmatiga (Anthropic Claude) yuboriladi.</li>
+  <li><b>Kimga beriladi:</b> faqat o'z sotuv xodimlarimizga (yopiq Telegram guruh). Ma'lumot sotilmaydi va reklama uchun ishlatilmaydi.</li>
+  <li><b>Saqlash:</b> o'z serverimizda, faqat javob berish va buyurtmani bajarish uchun kerak bo'lgan muddatda.</li>
+  <li><b>O'chirish:</b> ma'lumotingizni o'chirishni {{ contact_uz }} so'rashingiz mumkin.</li>
+</ul>
+
+{% else %}
+<h1>Data Deletion Instructions</h1>
+<p class="muted">{{ business }}</p>
+
+<p>To delete the data we hold about you (your Instagram username and ID, conversation history, and any phone number you shared):</p>
+<ol>
+  <li>Send a request to {{ contact }} with the text <b>"Delete my data"</b> and your Instagram username.</li>
+  <li>We delete your conversation history, comments and order requests from our server within 30 days and confirm by replying to you.</li>
+</ol>
+<p>You can also remove our access at any time in Instagram: <i>Settings → Website permissions → Apps and websites</i>.</p>
+
+<hr>
+<h1>Ma'lumotlarni o'chirish</h1>
+<ol>
+  <li>{{ contact_uz }} <b>«Ma'lumotlarimni o'chiring»</b> deb, Instagram username'ingiz bilan yozing.</li>
+  <li>Yozishmalaringiz, kommentlaringiz va buyurtma so'rovlaringiz 30 kun ichida serverimizdan o'chiriladi va sizga javob yozamiz.</li>
+</ol>
+{% endif %}
+</main></body></html>

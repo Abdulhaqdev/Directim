@@ -1270,3 +1270,17 @@ def test_unified_login_connect_flow(monkeypatch):
     assert q and q["ig_token"] == "EAAsystemuser" and q["ig_username"] == "quvvat_rizo"
     assert b and b["name"] == "Kitoblar"  # mavjud @ilmbooks.uz profiliga ulandi, yangisi yaratilmadi
     main.env.ig_config_id = ""
+
+
+def test_privacy_pages_are_public():
+    from fastapi.testclient import TestClient
+    import app.main as main
+
+    main.env.contact_email = "shop@example.com"
+    client = TestClient(main.app)
+    r = client.get("/privacy", follow_redirects=False)
+    assert r.status_code == 200 and "Privacy Policy" in r.text and "shop@example.com" in r.text
+    r = client.get("/data-deletion", follow_redirects=False)
+    assert r.status_code == 200 and "Data Deletion" in r.text
+    main.env.contact_email = ""
+    assert "Instagram" in client.get("/data-deletion").text
