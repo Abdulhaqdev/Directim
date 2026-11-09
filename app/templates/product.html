@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% block body %}
+<div class="page-head"><div><a class="small muted" href="/mahsulotlar">← Mahsulotlar</a><h1>{{ p.name or 'Yangi mahsulot' }}</h1>
+  {% if p.source_url %}<p><a href="{{ p.source_url }}" target="_blank">saytda ochish ↗</a></p>{% endif %}</div></div>
+<form method="post" action="/mahsulot/{{ p.id }}">
+<div class="grid" style="grid-template-columns:minmax(0,1fr) 260px;align-items:start">
+  <div class="card" style="margin:0">
+    <div class="grid g2" style="gap:14px">
+      <div class="field" style="margin:0"><label>Nomi</label><input type="text" name="name" value="{{ p.name or '' }}" required></div>
+      <div class="field" style="margin:0"><label>Kategoriya</label><input type="text" name="category" value="{{ p.category or '' }}" list="cats" required><datalist id="cats">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</datalist></div>
+      <div class="field" style="margin:0"><label>Narx (so'm)</label><input type="text" name="price" value="{{ p.price or '' }}" placeholder="269000"></div>
+      <div class="field" style="margin:0"><label>Eski narx <span class="hint">— chegirmadan oldin</span></label><input type="text" name="old_price" value="{{ p.old_price or '' }}"></div>
+      <div class="field" style="margin:0"><label>Narx izohi</label><input type="text" name="price_note" value="{{ p.price_note or '' }}" placeholder="dona / to'plam"></div>
+      <div class="field" style="margin:0"><label>Variantlar</label><input type="text" name="variants" value="{{ p.variants or '' }}" placeholder="oq, qora"></div>
+    </div>
+    <div class="field" style="margin-top:14px"><label>Mijozlar qanday atashi mumkin <span class="hint">— kalit so'zlar</span></label><input type="text" name="keywords" value="{{ p.keywords or '' }}"></div>
+    <div class="field"><label>Tavsif</label><textarea name="description" rows="5">{{ p.description or '' }}</textarea></div>
+    <div class="field"><label>Javob shabloni <span class="hint">— shu mahsulot so'ralganda agent shu mazmunda javob beradi (ixtiyoriy)</span></label>
+      <textarea name="template" rows="3" placeholder="«Saodat asri» 4 kitobli to'plam — 269 000 so'm. Oldindan to'lov yo'q. Raqamingizni qoldiring!">{{ p.template or '' }}</textarea></div>
+    <div class="field"><label>Instagram post ID'lari <span class="hint">— shu post ostidagi komment shu mahsulot haqida deb tushuniladi</span></label><input type="text" name="post_ids" value="{{ p.post_ids|join(' ') }}"></div>
+    <div class="sw"><div class="t strong">Sotuvda bor</div><label class="toggle"><input type="checkbox" name="in_stock" value="1" {{ 'checked' if p.in_stock }}><span></span></label></div>
+    <div class="row" style="margin-top:14px"><button class="btn" name="amal" value="saqlash">Saqlash</button>{% if p.id %}<button class="btn danger" name="amal" value="ochirish">O'chirish</button>{% endif %}</div>
+  </div>
+  <div class="stack">
+    {% if p.image_url %}<img src="{{ p.image_url }}" alt="" style="width:100%;border-radius:14px;border:1px solid var(--line)">{% endif %}
+    {% if memory %}<div class="card" style="margin:0"><h2 style="margin-bottom:8px">Xotiradagi javoblar</h2>{% for m in memory %}<div class="list-row"><div><div class="small strong">{{ m.question }}</div><div class="small muted">{{ m.answer }}</div></div></div>{% endfor %}</div>{% endif %}
+    {% if posts %}<details class="card" style="margin:0"><summary>Instagram postlari</summary>{% for x in posts %}<div class="small muted" style="margin-top:6px"><code>{{ x.id }}</code> {{ (x.caption or '')[:90] }}</div>{% endfor %}</details>{% endif %}
+  </div>
+</div>
+</form>
+{% endblock %}

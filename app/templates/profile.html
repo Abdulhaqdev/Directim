@@ -1,0 +1,98 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+{% set connected = acc.ig_user_id and acc.ig_token %}
+<div class="page-head">
+  <div class="row"><div class="avatar g" style="width:48px;height:48px;font-size:20px">{{ acc.name[:1] }}</div>
+    <div><h1>{{ acc.name }}</h1><p>{% if connected %}@{{ acc.ig_username }} · {% endif %}{{ products|length }} ta mahsulot · {{ 'yoqilgan' if acc.active else "o'chirilgan" }}</p></div></div>
+  <div class="row"><a class="btn ghost" href="/sinash?profil={{ acc.id }}">{{ icon('play') }} Sinash</a>
+    <a class="btn" href="/instagram/ulash?profil={{ acc.id }}">{{ icon('insta') }} {{ 'Qayta ulash' if connected else 'Instagram bilan ulash' }}</a></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div><h2>Instagram</h2><div class="sub">Chrome'da kerakli akkauntga kirib turing → «Instagram bilan ulash» → «Ruxsat berish»</div></div>
+  {% if connected %}<span class="badge ok"><span class="dot ok"></span>@{{ acc.ig_username }} ulangan</span>{% else %}<span class="badge warn">ulanmagan</span>{% endif %}</div>
+  {% if not setup.instagram_app %}<div class="alert warn" style="margin:0 0 10px"><div>Avval <a class="strong" href="/ulanishlar#instagram">Ulanishlar → Instagram</a> bo'limida Meta ilovasi ma'lumotlarini kiriting.</div></div>{% endif %}
+  <details><summary>Qo'lda token bilan ulash</summary>
+    <form method="post" action="/profil/{{ acc.id }}/tekshirish" class="stack" style="margin-top:10px">
+      <div class="small muted">Tokenni pastdagi «Asosiy» bo'limiga kiriting va saqlang, so'ng shu tugmani bosing.</div>
+      <div><button class="btn sm ghost">Tokenni tekshirish va ulash</button></div></form></details>
+</div>
+
+<div class="card" id="tarix">
+  <div class="card-head"><div><h2>📚 Eski yozishmalardan o'rganish</h2><div class="sub">Instagram Direct'dagi oldingi dialoglarni o'qiydi: do'kon bergan javoblarni topib, tasdiqlash uchun taklif qiladi. Hech kimga xabar yuborilmaydi.</div></div>
+    <form method="post" action="/profil/{{ acc.id }}/tarix"><button class="btn sm {{ '' if connected else 'ghost' }}" {{ '' if connected else 'disabled title="Avval Instagram ulang"' }}>Tarixni o'qish</button></form></div>
+  {% if history.holat == 'ishlayapti' %}<div class="alert info" style="margin:0">⏳ <div>O'qilmoqda… sahifani bir ozdan keyin yangilang.</div></div>
+  {% elif history.holat == 'xato' %}<div class="alert err" style="margin:0"><div>{{ history.xato }}</div></div>
+  {% elif history.dialoglar is defined %}
+    <div class="row small"><span class="badge">{{ history.dialoglar }} ta dialog</span><span class="badge info">{{ history.takliflar }} ta javob taklifi</span><span class="badge warn">{{ history.savollar }} ta yangi savol</span><span class="faint">{{ history.vaqt|vaqt }}</span>
+      {% if history.takliflar or history.savollar %}<a class="btn sm" href="/savollar">Ko'rib chiqish →</a>{% endif %}</div>
+    {% if history.maslahatlar %}<div class="stack" style="margin-top:12px">{% for t in history.maslahatlar %}<div class="small">💡 {{ t }}</div>{% endfor %}</div>{% endif %}
+  {% elif not connected %}<div class="small muted">Instagram ulangach shu tugma ishlaydi.</div>{% endif %}
+</div>
+
+<form method="post" action="/profil/{{ acc.id }}/sozlamalar" class="card" id="sozlamalar">
+  <div class="card-head"><div><h2>Agent qanday ishlaydi</h2><div class="sub">Yoqing yoki o'chiring — darhol kuchga kiradi</div></div><button class="btn sm">Saqlash</button></div>
+  <div class="grid g2" style="gap:16px;align-items:start">
+  {% for group, items in groups %}
+  <div style="border:1px solid var(--line);border-radius:12px;padding:6px 16px 10px">
+    <div class="strong" style="padding:10px 0 4px">{{ group }}</div>
+    {% for s in items %}
+    {% if s.kind == 'bool' %}
+    <div class="sw"><div class="t">{{ s.label }}</div><label class="toggle"><input type="checkbox" name="{{ s.path }}" value="1" {{ 'checked' if s.value }}><span></span></label></div>
+    {% elif s.kind == 'int' %}
+    <div class="sw"><div class="t">{{ s.label }}</div><input type="number" name="{{ s.path }}" value="{{ s.value }}" style="width:90px"></div>
+    {% elif s.kind == 'text' %}
+    <div class="field" style="padding-top:10px;margin:0 0 4px"><label>{{ s.label }}</label><input type="text" name="{{ s.path }}" value="{{ s.value or '' }}"></div>
+    {% else %}
+    <div class="field" style="padding-top:10px;margin:0 0 4px"><label>{{ s.label }}</label><textarea name="{{ s.path }}" rows="3">{% if s.kind == 'lines' %}{{ (s.value or [])|join('\n') }}{% else %}{{ s.value or '' }}{% endif %}</textarea></div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+  </div>
+</form>
+
+<form method="post" action="/profil/{{ acc.id }}">
+<div class="card">
+  <div class="card-head"><h2>Asosiy</h2><button class="btn sm">Saqlash</button></div>
+  <div class="grid g2" style="gap:14px">
+    <div class="field" style="margin:0"><label>Nomi</label><input type="text" name="name" value="{{ acc.name }}" required></div>
+    <div class="field" style="margin:0"><label>Qaysi mahsulotlarni sotadi <span class="hint">— kategoriyalar, «*» = hammasi</span></label>
+      <input type="text" name="categories" value="{{ acc.categories }}" list="catlist"><datalist id="catlist"><option>*</option>{% for c in categories %}<option>{{ c }}</option>{% endfor %}</datalist></div>
+    <div class="field" style="margin:0"><label>Telegram guruh <span class="hint">— bo'sh = asosiy guruh</span></label>
+      <div class="row" style="flex-wrap:nowrap"><input type="text" name="tg_chat_id" value="{{ acc.tg_chat_id or '' }}" placeholder="-100…">
+      {% if setup.telegram_bot %}<a class="btn sm ghost" href="/telegram/ulash?profil={{ acc.id }}" target="_blank" title="Bu profil uchun alohida guruh">✈️ Ulash</a>{% endif %}</div></div>
+    <div class="field" style="margin:0"><label>Instagram username</label><input type="text" name="ig_username" value="{{ acc.ig_username or '' }}"></div>
+  </div>
+  <div class="small muted" style="margin-top:6px">Mavjud kategoriyalar: {{ categories|join(' · ') }}</div>
+  <div class="sw" style="margin-top:10px"><div><div class="t strong">Profil yoqilgan</div><div class="small muted">O'chirsangiz, agent bu Instagram'da javob bermaydi</div></div>
+    <label class="toggle"><input type="checkbox" name="active" value="1" {{ 'checked' if acc.active }}><span></span></label></div>
+  <details style="margin-top:8px"><summary>Instagram token va ID (qo'lda)</summary>
+    <div class="grid g2" style="gap:14px;margin-top:10px">
+      <div class="field" style="margin:0"><label>Token {% if masked %}<span class="hint">(saqlangan: {{ masked }})</span>{% endif %}</label><input type="password" name="ig_token" placeholder="o'zgartirmaslik uchun bo'sh qoldiring" autocomplete="off"></div>
+      <div class="field" style="margin:0"><label>Akkaunt ID</label><input type="text" name="ig_user_id" value="{{ acc.ig_user_id or '' }}"></div>
+    </div></details>
+</div>
+<div class="card">
+  <div class="card-head"><div><h2>Biznes haqida</h2><div class="sub">Yetkazish, to'lov, qoidalar, taqiqlar. Mahsulot va narxlar — «Mahsulotlar» bo'limida.</div></div><button class="btn sm">Saqlash</button></div>
+  <textarea name="business_text" rows="14">{{ acc.business_text or '' }}</textarea>
+</div>
+<details class="card"><summary>Kengaytirilgan sozlamalar (YAML matni)</summary>
+  <textarea name="settings_yaml" rows="22" style="margin-top:12px" class="mono">{{ acc.settings_yaml or '' }}</textarea>
+  <button class="btn sm" style="margin-top:10px">Saqlash</button>
+</details>
+</form>
+
+
+
+<div class="card">
+  <div class="card-head"><div><h2>Bu profil sotadigan mahsulotlar</h2><div class="sub">Kategoriyalar bo'yicha katalogdan olinadi</div></div><a class="btn sm ghost" href="/mahsulotlar">Katalog →</a></div>
+  {% for p in products[:12] %}
+  <a class="list-row" href="/mahsulot/{{ p.id }}">{% if p.image_url %}<img class="thumb" src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="thumb"></div>{% endif %}
+    <div class="grow"><div class="strong ellipsis">{{ p.name }}</div><div class="small muted">{{ p.category }}</div></div>
+    <div class="nowrap strong">{{ '{:,}'.format(p.price).replace(',', ' ') ~ " so'm" if p.price else '—' }}</div></a>
+  {% else %}<div class="empty">Kategoriyalarga mos mahsulot yo'q — yuqorida kategoriyalarni tekshiring.</div>{% endfor %}
+  {% if products|length > 12 %}<div class="small muted" style="margin-top:8px">… va yana {{ products|length - 12 }} ta</div>{% endif %}
+</div>
+{% if posts %}<div class="card"><h2>Instagram postlari ({{ posts|length }})</h2><div class="sub" style="margin-bottom:10px">Agent post matnlarini ham o'qiydi</div>
+{% for p in posts[:10] %}<div class="list-row"><code>{{ p.id }}</code><div class="grow small muted ellipsis">{{ p.caption or '' }}</div></div>{% endfor %}</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,59 @@
+# Profil sozlamalari (har bir Instagram profil uchun alohida). Morechat'dagi sozlamalaringizdan ko'chirildi.
+# true = yoqilgan, false = o'chirilgan. # dan keyingi matn — izoh.
+
+agent:
+  ism: "do'kon menejeri"            # Agent o'zini shunday tanishtiradi
+  jins: ayol                         # ayol | erkak
+  uslub: "Qisqa va ishonchli yozing. Avval mijoz qaysi mahsulotga qiziqayotganini aniqlang, keyin aniq narx va shartni ayting: yetkazib berish O'zbekiston bo'ylab, oldindan to'lov yo'q. Tasdiqlanmagan model, komplekt, kafolat yoki muddatni aytmang."
+  max_javoblar: 10                   # Bitta dialogda AI ko'pi bilan nechta javob yozadi (keyin operatorga uzatadi)
+
+sotuv:
+  narx_aytish: true                  # Narx so'ralsa aytadi
+  raqam_sorash: true
+  lid_savollari:                     # Raqamdan tashqari so'raladigan savollar (bittadan, tabiiy)
+    - "Kim uchun xarid qilyapsiz?"
+    - "Qaysi viloyatdansiz?"
+  raqam_tasdiq_matni: "✅ Raqamingiz qabul qilindi\n📞 Tez orada siz bilan bog'lanamiz"
+  raqam_tasdiq_matni_kirill: "✅ Рақамингиз қабул қилинди\n📞 Тез орада сиз билан боғланамиз"
+  operatorga_uzatish: true           # Murakkab savol / shikoyatda Telegram'ga «Operator kerak» yuboradi
+
+direct:
+  yoqilgan: true                     # Direct xabarlarga javob berish
+  rasm_tushunish: true               # Mijoz yuborgan rasmni ko'rib tushunadi
+
+komment:
+  yoqilgan: true                     # Kommentlarga ishlov berish
+  ochiq_javob: true                  # Komment ostiga ochiq javob yozish
+  directga_yozish: true              # Savol/xarid kommentida Direct'ga yozish
+  faqat_qiziqish_bolsa_direct: true  # Faqat qiziqish bildirganlarga Direct'ga yozadi
+  neytral_kommentga_javob: true      # «Mashallah», emoji va h.k.ga qisqa rahmat
+  cta_matni: "✅ Direct'ga yozdik"
+  direct_kalit_sozlar:               # Bu so'zlar bo'lsa, albatta Direct'ga yozadi
+    - "narxi nech"
+    - "nech pul"
+    - "qancha"
+    - "нархи"
+    - "неч пул"
+    - "қанча"
+
+moderatsiya:
+  yoqilgan: true
+  haqorat: yashirish                 # So'kinish, haqorat:   yashirish | ochirish | tegma  (yashirilsa — Telegram'dan qayta ochish mumkin)
+  salbiy: yashirish                  # Ayblov, salbiy fikr:  yashirish | ochirish | tegma
+  spam: yashirish                    # Reklama, spam:        ochirish | yashirish | tegma
+  telegramga_yuborish: true          # Moderatsiya qilingan kommentni guruhga xabar qiladi
+
+eslatma:
+  yoqilgan: true                     # Jim qolgan mijozga eslatma (raqam qoldirmagan bo'lsa)
+  kechikish_daqiqa: 180              # Oxirgi javobimizdan necha daqiqa o'tgach
+  dialog_uchun_max: 1                # Bitta mijozga ko'pi bilan nechta eslatma
+  kunlik_limit: 20                   # Bir kunda jami eslatmalar soni
+
+xotira:
+  mijozga_darhol_yuborish: true      # Siz Telegram'da javob bersangiz, savol bergan mijozga darhol yetkaziladi
+
+operator_yozsa_ai_toxtash_soat: 12   # Siz Instagram'dan qo'lda yozsangiz, AI shu dialogda necha soat jim turadi
+
+test_rejimi:
+  yoqilgan: false                    # true qilsangiz, agent faqat quyidagi akkauntlarga javob beradi
+  usernamelar: []                    # masalan: ["mening_test_akkauntim"]

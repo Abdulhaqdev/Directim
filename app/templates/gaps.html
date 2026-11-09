@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block body %}
+<div class="page-head"><div><h1>Javobsiz savollar</h1><p>Agent bilmagan savollar. Telegram'da shu savol xabariga <b>Reply</b> qilib javob bersangiz ham bo'ladi.</p></div>
+  {% if setup.telegram_bot and setup.telegram_group %}<form method="post" action="/savollar/guruhga"><button class="btn ghost">✈️ Telegram guruhga yuborish</button></form>{% endif %}</div>
+{% set suggestions = gaps|selectattr('status','equalto','taklif')|list %}
+{% if suggestions %}
+<div class="card" style="border-color:var(--info)">
+  <div class="card-head"><div><h2>📚 Eski yozishmalardan topilgan javoblar</h2><div class="sub">Do'koningiz ilgari shunday javob bergan. To'g'ri bo'lsa — tasdiqlang, agent xotirasiga yoziladi.</div></div><span class="badge info">{{ suggestions|length }} ta</span></div>
+  {% for g in suggestions %}
+  <form method="post" action="/savollar/{{ g.id }}" class="list-row" style="display:block">
+    <div class="strong">{{ g.question }}</div><div class="small muted" style="margin-bottom:8px">{{ g.account_name }}{% if g.product_name %} · 🛍 {{ g.product_name }}{% endif %}</div>
+    <div class="row" style="flex-wrap:nowrap"><input type="text" name="javob" value="{{ g.answer }}" required>
+      <button class="btn sm" name="amal" value="saqlash">✓ Tasdiqlash</button><button class="btn sm ghost" name="amal" value="etiborsiz" formnovalidate>Rad etish</button></div>
+    <input type="hidden" name="qamrov" value="profil">
+  </form>{% endfor %}
+</div>{% endif %}
+{% set waiting = gaps|selectattr('status','equalto','kutilmoqda')|list %}
+{% for g in waiting %}
+<div class="card">
+  <div class="row between" style="flex-wrap:nowrap;align-items:flex-start"><div><div class="strong" style="font-size:16px">{{ g.question }}</div>
+    <div class="small muted">{{ g.account_name }}{% if g.product_name %} · 🛍 {{ g.product_name }}{% endif %}</div></div>
+    <span class="badge warn nowrap">{{ g.hits }} marta so'ralgan</span></div>
+  <form method="post" action="/savollar/{{ g.id }}" style="margin-top:14px">
+    <div class="row" style="flex-wrap:nowrap"><input type="text" name="javob" placeholder="Javobingiz, masalan: Narxi 310 000 so'm" required><button class="btn" name="amal" value="saqlash">Javob berish</button></div>
+    <div class="row" style="margin-top:8px"><select name="qamrov" style="width:auto"><option value="profil">Faqat shu profil uchun</option><option value="hammasi">Barcha profillar uchun</option></select>
+      <button class="btn sm ghost" name="amal" value="etiborsiz" formnovalidate>E'tiborsiz qoldirish</button></div>
+  </form>
+</div>
+{% else %}{% if not suggestions %}<div class="card"><div class="empty"><div class="big">🎉</div>Hamma savolga javob berilgan</div></div>{% endif %}{% endfor %}
+{% set done = gaps|rejectattr('status','in',['kutilmoqda','taklif'])|list %}
+{% if done %}<details class="card"><summary>Javob berilganlar ({{ done|length }})</summary>
+{% for g in done %}<div class="list-row"><div class="grow"><div class="small strong">{{ g.question }}</div><div class="small muted">{{ g.answer or "e'tiborsiz qoldirilgan" }}</div></div><span class="badge">{{ g.account_name }}</span></div>{% endfor %}</details>{% endif %}
+{% endblock %}

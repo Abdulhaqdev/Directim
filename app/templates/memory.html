@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+<div class="page-head"><div><h1>Xotira</h1><p>Siz bergan javoblar. Shu savol yana kelsa, agent o'zi shu javobni beradi.</p></div></div>
+{% macro form(m) %}
+<form method="post" action="/xotira/{{ m.id if m else 0 }}">
+  <div class="grid g2" style="gap:12px">
+    <div class="field" style="margin:0"><label>Savol</label><input type="text" name="question" value="{{ m.question if m else '' }}" required></div>
+    <div class="field" style="margin:0"><label>Javob</label><input type="text" name="answer" value="{{ m.answer if m else '' }}" required></div>
+    <div class="field" style="margin:0"><label>Qaysi profil uchun</label><select name="account_id"><option value="">Barcha profillar</option>
+      {% for a in accounts %}<option value="{{ a.id }}" {{ 'selected' if m and m.account_id==a.id }}>{{ a.name }}</option>{% endfor %}</select></div>
+    <div class="field" style="margin:0"><label>Mahsulot</label><select name="product_id"><option value="">Umumiy savol</option>
+      {% for p in products %}<option value="{{ p.id }}" {{ 'selected' if m and m.product_id==p.id }}>{{ p.name[:60] }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button class="btn sm" name="amal" value="saqlash">Saqlash</button>{% if m %}<button class="btn sm danger" name="amal" value="ochirish">O'chirish</button><span class="small faint">{{ {'telegram':"Telegram'dan",'panel':'paneldan','morechat':"Morechat'dan"}.get(m.source, m.source) }}</span>{% endif %}</div>
+</form>{% endmacro %}
+<details class="card" {{ 'open' if not memory }}><summary class="strong" style="color:var(--text);font-size:15px">+ Yangi javob qo'shish</summary><div style="margin-top:14px">{{ form(None) }}</div></details>
+<div class="card">
+  {% for m in memory %}
+  <details class="list-row" style="display:block"><summary style="list-style:none;cursor:pointer">
+    <div class="row between" style="flex-wrap:nowrap"><div style="min-width:0"><div class="strong">{{ m.question }}</div><div class="small muted">{{ m.answer }}</div></div>
+    <div class="row" style="flex:none">{% if m.product_name %}<span class="badge info">{{ m.product_name[:24] }}</span>{% endif %}<span class="badge">{{ m.account_name or 'hammasi' }}</span></div></div></summary>
+    <div style="margin-top:12px">{{ form(m) }}</div></details>
+  {% else %}<div class="empty"><div class="big">🧠</div>Xotira bo'sh</div>{% endfor %}
+</div>
+{% endblock %}

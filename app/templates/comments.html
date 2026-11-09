@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block body %}
+<div class="page-head"><div><h1>Kommentlar</h1><p>Post ostidagi kommentlar va agent nima qilgani</p></div>
+  <form method="get"><select name="profil" onchange="this.form.submit()"><option value="0">Barcha profillar</option>
+  {% for a in accounts %}<option value="{{ a.id }}" {{ 'selected' if profil==a.id }}>{{ a.name }}</option>{% endfor %}</select></form></div>
+<div class="card">
+{% for c in comments %}
+  <div class="list-row" style="align-items:flex-start"><div class="avatar sm">{{ (c.username or '?')[:1]|upper }}</div>
+    <div class="grow"><div class="row" style="gap:8px"><span class="strong">@{{ c.username }}</span>
+      <span class="badge {{ 'danger' if c.category in ['HAQORAT','SALBIY','SPAM'] else ('warn' if c.category=='SHIKOYAT' else ('ok' if c.category in ['SAVOL','XARID'] else '')) }}">{{ c.category }}</span>
+      <span class="small faint">{{ c.account_name }} · {{ c.created_at|vaqt }}</span></div>
+      <div>{{ c.text }}</div>
+      {% if c.public_reply %}<div class="small muted" style="margin-top:4px">↳ {{ c.public_reply }}</div>{% endif %}
+      <div class="small faint" style="margin-top:2px">{{ c.action }}</div></div></div>
+{% else %}<div class="empty"><div class="big">💭</div>Hali komment yo'q</div>{% endfor %}
+</div>
+{% endblock %}

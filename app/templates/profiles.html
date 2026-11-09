@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+<div class="page-head">
+  <div><h1>Profillar</h1><p>Har bir Instagram — alohida agent: o'z mahsulotlari, matni va Telegram guruhi</p></div>
+  <a class="btn" href="/instagram/ulash?profil=0">{{ icon('insta') }} Instagram ulash</a>
+</div>
+<div class="grid g3">
+  {% for a in accounts %}{% set prof = profiles.get(a.id) %}
+  <div class="card profile-card" style="margin:0">
+    <div class="pc-top"><div class="avatar {{ ['g','o','p',''][loop.index0 % 4] }}">{{ a.name[:1] }}</div>
+      <div style="flex:1;min-width:0"><a href="/profil/{{ a.id }}" class="strong ellipsis" style="display:block">{{ a.name }}</a>
+      <div class="small muted ellipsis">{% if a.ig_user_id and a.ig_token %}@{{ a.ig_username }}{% else %}Instagram ulanmagan{% endif %}</div></div>
+      {% if not a.active %}<span class="badge">o'chiq</span>{% elif a.ig_user_id and a.ig_token %}<span class="badge ok"><span class="dot ok"></span>ulangan</span>{% else %}<span class="badge warn">ulash kerak</span>{% endif %}</div>
+    <div class="small muted">🏷 {{ a.categories if a.categories != '*' else 'Butun katalog' }}</div>
+    <div class="row">
+      {% if not (a.ig_user_id and a.ig_token) %}<a class="btn sm" href="/instagram/ulash?profil={{ a.id }}">{{ icon('insta') }} Ulash</a>{% endif %}
+      <a class="btn sm ghost" href="/profil/{{ a.id }}">Sozlash</a><a class="btn sm ghost" href="/sinash?profil={{ a.id }}">Sinash</a></div>
+  </div>{% endfor %}
+  <div class="card" style="margin:0" id="yangi">
+    <h2>Yangi profil</h2><div class="sub" style="margin-bottom:12px">Nomini yozing — keyin Instagram'ni ulaysiz</div>
+    <form method="post" action="/profillar/yangi">
+      <div class="field"><label>Nomi</label><input type="text" name="name" placeholder="masalan: Soatlar do'koni" required></div>
+      <div class="field"><label>Qaysi mahsulotlarni sotadi <span class="hint">— kategoriyalar, vergul bilan</span></label>
+        <input type="text" name="categories" value="*" list="catlist"><datalist id="catlist"><option>*</option>{% for c in categories %}<option>{{ c }}</option>{% endfor %}</datalist>
+        <span class="hint">Mavjud: {{ categories|join(', ') }}</span></div>
+      <button class="btn block">{{ icon('plus') }} Qo'shish</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block body %}
+<div class="page-head"><div><h1>Dialoglar</h1><p>Mijozlar bilan Direct'dagi yozishmalar</p></div>
+  <form method="get"><select name="profil" onchange="this.form.submit()"><option value="0">Barcha profillar</option>
+  {% for a in accounts %}<option value="{{ a.id }}" {{ 'selected' if profil==a.id }}>{{ a.name }}</option>{% endfor %}</select></form></div>
+<div class="card">
+{% for c in convs %}
+  <a class="list-row" href="/dialog/{{ c.id|urlencode }}">
+    <div class="avatar sm {{ ['g','o','p',''][loop.index0 % 4] }}">{{ (c.username or c.name or '?')[:1]|upper }}</div>
+    <div class="grow"><div class="row" style="gap:8px"><span class="strong">{{ ('@' ~ c.username) if c.username else c.igsid }}</span>
+      {% if c.phone %}<span class="badge ok">📞 {{ c.phone }}</span>{% endif %}
+      {% if not c.ai_enabled %}<span class="badge">AI o'chiq</span>{% elif c.paused_until and c.paused_until > now %}<span class="badge warn">operator</span>{% endif %}</div>
+      <div class="small muted ellipsis">{{ c.last_text or '' }}</div></div>
+    <div class="small faint nowrap" style="text-align:right">{{ c.account_name }}<br>{{ c.updated_at|vaqt }}</div></a>
+{% else %}<div class="empty"><div class="big">💬</div>Hali dialog yo'q. Instagram ulangach, mijozlar yozganda shu yerda ko'rinadi.<div style="margin-top:12px"><a class="btn sm ghost" href="/sinash">Agentni sinab ko'rish</a></div></div>{% endfor %}
+</div>
+{% endblock %}

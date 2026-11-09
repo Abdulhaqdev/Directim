@@ -1,0 +1,64 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+<div class="page-head">
+  <div><h1>Mahsulotlar</h1><p>{{ total }} ta mahsulot · agent narx va ma'lumotni shu yerdan oladi</p></div>
+  <div class="row"><a class="btn ghost" href="#import">{{ icon('globe') }} Saytdan import</a><a class="btn" href="/mahsulot/0">{{ icon('plus') }} Qo'shish</a></div>
+</div>
+{% if import_status.holat == 'ishlayapti' %}<div class="alert info">⏳ <div>{{ import_status.url }} dan import ketmoqda… Bir-ikki daqiqadan keyin sahifani yangilang.</div></div>{% endif %}
+<div class="card">
+  <form method="get" class="row" style="margin-bottom:14px;flex-wrap:nowrap">
+    <input type="search" name="q" value="{{ q }}" placeholder="Qidirish: nomi bo'yicha…">
+    {% if kategoriya %}<input type="hidden" name="kategoriya" value="{{ kategoriya }}">{% endif %}
+    <button class="btn ghost">Qidirish</button>
+  </form>
+  <div class="chips" style="margin-bottom:6px">
+    <a class="chip {{ 'on' if not kategoriya }}" href="/mahsulotlar{{ '?q=' ~ q if q }}">Hammasi</a>
+    {% for c, n in cat_counts %}<a class="chip {{ 'on' if c == kategoriya }}" href="/mahsulotlar?kategoriya={{ c|urlencode }}{{ '&q=' ~ q if q }}">{{ c }} <span class="faint">{{ n }}</span></a>{% endfor %}
+  </div>
+  <div class="scroll"><table>
+    <tr><th></th><th>Mahsulot</th><th>Narx</th><th>Holat</th><th>Manba</th></tr>
+    {% for p in products %}
+    <tr class="click" onclick="location.href='/mahsulot/{{ p.id }}'">
+      <td style="width:56px">{% if p.image_url %}<img class="thumb" src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="thumb"></div>{% endif %}</td>
+      <td><div class="strong">{{ p.name }}</div><div class="small muted">{{ p.category }}{% if p.template %} · <span class="badge info" style="padding:0 6px">shablon</span>{% endif %}</div></td>
+      <td class="nowrap"><div class="strong">{{ '{:,}'.format(p.price).replace(',', ' ') ~ " so'm" if p.price else '—' }}</div>
+        {% if p.old_price %}<div class="small faint"><s>{{ '{:,}'.format(p.old_price).replace(',', ' ') }}</s></div>{% endif %}</td>
+      <td>{% if p.in_stock %}<span class="badge ok">bor</span>{% else %}<span class="badge warn">tugagan</span>{% endif %}</td>
+      <td class="small muted nowrap">{{ p.source[5:] if p.source and p.source.startswith('sayt:') else {'morechat':'Morechat','qolda':"qo'lda",'csv':'CSV','sheets':'Sheets'}.get(p.source, p.source or '') }}</td>
+    </tr>
+    {% else %}<tr><td colspan="5"><div class="empty"><div class="big">📦</div>Hech narsa topilmadi</div></td></tr>{% endfor %}
+  </table></div>
+</div>
+
+<div class="card" id="import">
+  <div class="card-head"><div><h2>🌐 Saytdan import</h2><div class="sub">Sayt manzilini bering — nomi, narxi, chegirmasi, rasmi va tavsifi bilan olinadi. Har {{ site_sync_hours }} soatda o'zi yangilanadi.</div></div></div>
+  {% if sites %}<div class="stack" style="margin-bottom:16px">{% for s in sites %}
+    <div class="row between" style="border:1px solid var(--line);border-radius:12px;padding:10px 14px">
+      <div style="min-width:0"><a class="strong" href="{{ s.url }}" target="_blank">{{ s.url.replace('https://','') }}</a>
+        <div class="small muted">{{ s.natija }} · {{ s.oxirgi|vaqt }}</div></div>
+      <div class="row"><form method="post" action="/mahsulotlar/sayt"><input type="hidden" name="url" value="{{ s.url }}"><input type="hidden" name="kategoriya" value="{{ s.category }}"><input type="hidden" name="soni" value="{{ s.max }}"><button class="btn sm ghost">Yangilash</button></form>
+        <form method="post" action="/mahsulotlar/sayt/ochirish"><input type="hidden" name="url" value="{{ s.url }}"><button class="btn sm danger" title="Avtomatik yangilashdan olib tashlash">×</button></form></div>
+    </div>{% endfor %}</div>{% endif %}
+  <form method="post" action="/mahsulotlar/sayt">
+    <div class="grid g2" style="gap:14px">
+      <div class="field" style="margin:0"><label>Sayt manzili</label><input type="text" name="url" placeholder="masalan: shoxmarket.uz" required></div>
+      <div class="field" style="margin:0"><label>Kategoriya <span class="hint">— bo'sh = saytdagi kategoriya</span></label><input type="text" name="kategoriya" list="cats2"><datalist id="cats2">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</datalist></div>
+    </div>
+    <details style="margin:12px 0"><summary>Kategoriyalarni moslash</summary>
+      <div class="field" style="margin-top:8px"><span class="hint">Har qatorda <code>saytdagi = bizdagi</code>. <code>= -</code> — o'sha kategoriya olinmaydi.</span>
+      <textarea name="moslash" rows="3" placeholder="Kitob = Kitoblar&#10;Bolajonlar uchun = Bolalar uchun&#10;Intim tovarlar = -"></textarea></div>
+      <input type="hidden" name="soni" value="300"></details>
+    <button class="btn">{{ icon('globe') }} Import qilish</button>
+  </form>
+</div>
+
+<div class="grid g2">
+  <form class="card" method="post" action="/mahsulotlar/import" enctype="multipart/form-data">
+    <h2>Excel / CSV fayl</h2><div class="sub" style="margin-bottom:12px">Excel'da «CSV UTF-8» qilib saqlang. <a class="strong" href="/mahsulotlar/namuna.csv">Namuna fayl</a></div>
+    <input type="file" name="fayl" accept=".csv,text/csv" required style="margin-bottom:12px"><button class="btn ghost">Yuklash</button>
+  </form>
+  <form class="card" method="post" action="/mahsulotlar/sheets">
+    <h2>Google Sheets</h2><div class="sub" style="margin-bottom:12px">Jadvalni «havolaga ega hamma ko'ra oladi» qiling — narxni jadvalda o'zgartirasiz</div>
+    <input type="text" name="url" value="{{ catalog_url }}" placeholder="https://docs.google.com/spreadsheets/d/…" style="margin-bottom:12px"><button class="btn ghost">Ulash</button>
+  </form>
+</div>
+{% endblock %}

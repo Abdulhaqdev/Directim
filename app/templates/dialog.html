@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block body %}
+<div class="page-head">
+  <div><a class="small muted" href="/dialoglar">← Dialoglar</a><h1>{{ ("@" ~ conv.username) if conv.username else conv.igsid }}</h1>
+    <p>{{ account.name if account else '' }}{% if conv.phone %} · 📞 {{ conv.phone }}{% endif %}{% if conv.username %} · <a href="https://ig.me/m/{{ conv.username }}" target="_blank">Instagram'da ochish ↗</a>{% endif %}</p></div>
+  <form method="post" action="/dialog/{{ conv.id|urlencode }}/ai" class="row">
+    {% if active %}<span class="badge ok"><span class="dot ok"></span>AI javob beryapti</span><input type="hidden" name="holat" value="ochir"><button class="btn sm ghost">AI'ni to'xtatish</button>
+    {% else %}<span class="badge warn">AI to'xtagan</span><input type="hidden" name="holat" value="yoq"><button class="btn sm">AI'ni yoqish</button>{% endif %}
+  </form>
+</div>
+<div class="grid" style="grid-template-columns:minmax(0,1fr) 260px;align-items:start">
+  <div class="card" style="margin:0">
+    <div class="chat">
+    {% for m in messages %}<div class="bubble {{ m.role }}">{{ m.text }}<div class="meta">{{ {'user':'Mijoz','assistant':'AI','operator':'Siz'}[m.role] }}{% if m.source not in ['dm'] %} · {{ m.source }}{% endif %} · {{ m.created_at|vaqt }}</div></div>
+    {% else %}<div class="empty">Xabar yo'q</div>{% endfor %}
+    </div>
+    <form method="post" action="/dialog/{{ conv.id|urlencode }}/yuborish" class="row" style="margin-top:14px;flex-wrap:nowrap">
+      <input type="text" name="matn" placeholder="O'zingiz yozing (AI shu dialogda vaqtincha jim turadi)" autocomplete="off"><button class="btn">Yuborish</button></form>
+  </div>
+  <div class="card" style="margin:0"><h2 style="margin-bottom:8px">Mijoz haqida</h2>
+    {% for k, label in [('interest','🛍 Qiziqish'),('for_whom','🎯 Kim uchun'),('region','📍 Viloyat'),('summary','📝 Xulosa')] %}
+    <div class="list-row" style="display:block"><div class="small muted">{{ label }}</div><div class="small strong">{{ conv.lead_data[k] or '—' }}</div></div>{% endfor %}
+  </div>
+</div>
+<script>var c=document.querySelector('.chat');if(c)c.scrollTop=c.scrollHeight;</script>
+{% endblock %}

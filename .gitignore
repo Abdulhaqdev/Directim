@@ -1,0 +1,11 @@
+.env
+.venv/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude/
+config/.claude/
+*.db
+sessiya.txt
+.DS_Store

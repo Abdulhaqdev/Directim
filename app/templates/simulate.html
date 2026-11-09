@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+<div class="page-head">
+  <div><h1>Agentni sinash</h1><p>O'zingiz mijoz bo'lib yozing — agent qanday javob berishini ko'rasiz. Instagram'ga va Telegram'ga hech narsa yuborilmaydi.</p></div>
+  <form method="get" class="row"><select name="profil" onchange="this.form.submit()" style="min-width:220px">
+    {% for a in accounts %}{% if a.active %}<option value="{{ a.id }}" {{ 'selected' if a.id == prof.id }}>{{ a.name }}</option>{% endif %}{% endfor %}</select></form>
+</div>
+{% if not setup.claude %}<div class="alert warn">⚠️ <div>Claude kaliti kiritilmagan — agent javob yoza olmaydi. <a class="strong" href="/ulanishlar#claude">Ulanishlar → Claude</a></div></div>{% endif %}
+<div class="grid" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:start">
+  <div class="card" style="margin:0">
+    <div class="card-head">
+      <div class="row"><div class="avatar sm g">{{ prof.account.name[:1] }}</div><div><div class="strong">{{ prof.account.name }}</div><div class="small muted">Direct · {{ products }} ta mahsulotni biladi</div></div></div>
+      <form method="post" action="/sinash/{{ prof.id }}/tozalash"><button class="btn sm ghost">Yangi suhbat</button></form>
+    </div>
+    <div class="chat" id="chat">
+      {% for m in sim.chat %}
+        <div class="bubble {{ m.role }}">{{ m.text }}</div>
+        {% for e in m.events or [] %}<div class="event"><div class="h">{{ e.title }}</div><div class="tgmsg">{{ e.html|replace('<b>','')|replace('</b>','')|striptags }}</div></div>{% endfor %}
+      {% else %}
+        <div class="empty"><div class="big">💬</div>Mijoz sifatida yozib ko'ring. Masalan:
+          <div class="chips" style="justify-content:center;margin-top:12px">
+            {% for q in ["Assalomu alaykum, narxi qancha?", "Dastavka bormi? Men Samarqanddanman", "Olmoqchiman, raqamim 90 123 45 67", "Operator bilan gaplashmoqchiman"] %}
+            <form method="post" action="/sinash/{{ prof.id }}/yozish"><input type="hidden" name="matn" value="{{ q }}"><button class="chip" style="cursor:pointer">{{ q }}</button></form>{% endfor %}
+          </div></div>
+      {% endfor %}
+      <div id="oxiri"></div>
+    </div>
+    <form method="post" action="/sinash/{{ prof.id }}/yozish" class="row" style="margin-top:14px;flex-wrap:nowrap">
+      <input type="text" name="matn" placeholder="Mijoz nomidan yozing…" autofocus autocomplete="off">
+      <button class="btn">{{ icon('send') }}</button>
+    </form>
+  </div>
+  <div class="stack">
+    <div class="card" style="margin:0">
+      <h2 style="margin-bottom:10px">Agent nimani tushundi</h2>
+      {% set last = (sim.chat|selectattr('role','equalto','assistant')|list|last) if sim.chat else None %}
+      {% if last and last.info %}
+        {% for k, label in [('mahsulot','🛍 Qiziqish'),('telefon','📞 Telefon'),('viloyat','📍 Viloyat'),('kim_uchun','🎯 Kim uchun')] %}
+        <div class="list-row"><div class="small muted" style="width:110px">{{ label }}</div><div class="grow strong">{{ last.info[k] or '—' }}</div></div>{% endfor %}
+        <div class="small muted" style="margin-top:8px">📝 {{ last.info.xulosa }}</div>
+      {% else %}<div class="muted small">Birinchi xabardan keyin shu yerda agent ajratgan ma'lumotlar ko'rinadi.</div>{% endif %}
+    </div>
+    <div class="card" style="margin:0" id="komment">
+      <h2>Kommentni sinash</h2><div class="sub" style="margin-bottom:12px">Post ostiga yozilgan kommentga agent nima qiladi</div>
+      <form method="post" action="/sinash/{{ prof.id }}/komment" class="stack">
+        <input type="text" name="matn" placeholder="masalan: narxi qancha?" value="{{ comment.text or '' }}">
+        <button class="btn ghost">Tekshirish</button>
+      </form>
+      {% if comment.category %}
+      <div style="margin-top:14px" class="stack">
+        <div class="row"><span class="badge {{ 'danger' if comment.category in ['HAQORAT','SALBIY','SPAM'] else 'ok' }}">{{ comment.category }}</span><span class="small">{{ comment.action }}</span></div>
+        {% if comment.public %}<div><div class="lbl">Komment ostida:</div><div class="bubble assistant" style="max-width:100%;margin-top:6px">{{ comment.public }}</div></div>{% endif %}
+        {% if comment.dm %}<div><div class="lbl">Direct'ga:</div><div class="bubble assistant" style="max-width:100%;margin-top:6px">{{ comment.dm }}</div></div>{% endif %}
+      </div>{% elif comment.error %}<div class="alert err" style="margin-top:12px">{{ comment.error }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+<script>var c=document.getElementById('chat');if(c)c.scrollTop=c.scrollHeight;</script>
+{% endblock %}
