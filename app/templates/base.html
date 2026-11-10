@@ -149,6 +149,7 @@ details>summary::before{content:"▸ ";}details[open]>summary::before{content:"�
     <a href="/" class="brand"><div class="logo">🛍</div><span>Sotuv agenti</span></a>
     <nav class="nav">
       <a href="/" class="{{ 'on' if page=='dashboard.html' }}">{{ icon('home') }}<span class="t">Bosh sahifa</span></a>
+      <a href="/boshqaruv" class="{{ 'on' if page=='control.html' }}">{{ icon('spark') }}<span class="t">Boshqaruv agenti</span></a>
       <a href="/profillar" class="{{ 'on' if page in ['profiles.html','profile.html'] }}">{{ icon('users') }}<span class="t">Profillar</span></a>
       <a href="/sinash" class="{{ 'on' if page=='simulate.html' }}">{{ icon('play') }}<span class="t">Agentni sinash</span></a>
       <a href="/dialoglar" class="{{ 'on' if page in ['dialogs.html','dialog.html'] }}">{{ icon('chat') }}<span class="t">Dialoglar</span></a>

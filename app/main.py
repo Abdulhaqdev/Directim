@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import catalog, scraper
 from .ai import AI
+from .control import ControlAgent
 from .db import DB, iso
 from . import instagram as iglib
 from .instagram import Instagram, verify_signature
@@ -91,6 +92,7 @@ def bootstrap() -> None:
 
 bootstrap()
 agent = Agent(db, tg, ai, make_ig, env.reply_debounce_seconds)
+control = ControlAgent(db, agent, tg, telegram_chat=lambda: env.telegram_chat_id)
 
 
 def _on_tg_migrate(old: str, new: str) -> None:
@@ -1035,6 +1037,47 @@ async def dialog_toggle(conv_id: str, holat: str = Form(...), _: str = Depends(a
 async def dialog_send(conv_id: str, matn: str = Form(...), _: str = Depends(admin)):
     await agent.send_operator_message(conv_id, matn)
     return RedirectResponse(f"/dialog/{quote(conv_id)}", 303)
+
+
+# --- Boshqaruv agenti (egasi bilan suhbat: hisobot, buyruqlar, tasdiq kartalari) ---
+def _control_json(rows: list[dict]) -> list[dict]:
+    return [{"id": m["id"], "role": m["role"], "text": m["text"], "vaqt": _local_time(m.get("created_at"), "%H:%M"),
+             "action_id": m.get("action_id"), "title": m.get("title"), "details": m.get("details"),
+             "status": m.get("action_status"), "result": m.get("action_result")} for m in rows]
+
+
+@app.get("/boshqaruv")
+async def control_page(request: Request, _: str = Depends(admin)):
+    msgs = _control_json(db.control_messages(200))
+    pending = sum(1 for m in msgs if m["role"] == "action" and m["status"] == "kutilmoqda")
+    today = db.period_report(1)
+    stats = {k: sum(r[k] for r in today) for k in ("yozgan_mijozlar", "lidlar", "javobsiz_savollar", "operator_kerak_dialoglar")}
+    return render(request, "control.html", messages_json=json.dumps(msgs, ensure_ascii=False), pending=pending, stats=stats)
+
+
+@app.post("/boshqaruv/xabar")
+async def control_message(request: Request, _: str = Depends(admin)):
+    body = await request.json()
+    rows = await control.chat(str(body.get("matn") or ""))
+    return {"messages": _control_json(rows)}
+
+
+@app.post("/boshqaruv/amal/{action_id}")
+async def control_decide(action_id: int, request: Request, _: str = Depends(admin)):
+    body = await request.json()
+    last = (db.control_messages(1) or [{"id": 0}])[-1]["id"]
+    try:
+        action = await control.decide(action_id, bool(body.get("tasdiq")))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    return {"status": action["status"], "result": action.get("result"),
+            "messages": _control_json(db.control_messages(after_id=last))}
+
+
+@app.post("/boshqaruv/tozalash")
+async def control_clear(_: str = Depends(admin)):
+    db.clear_control_messages()
+    return RedirectResponse("/boshqaruv", 303)
 
 
 @app.get("/kommentlar")

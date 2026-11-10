@@ -1284,3 +1284,108 @@ def test_privacy_pages_are_public():
     assert r.status_code == 200 and "Data Deletion" in r.text
     main.env.contact_email = ""
     assert "Instagram" in client.get("/data-deletion").text
+
+
+def test_ads_table_upsert_and_deactivate():
+    import os
+    from app.db import DB
+
+    db = DB(os.environ["DB_PATH"])
+    pid = db.upsert_product(name="Reklama kitobi", category="Kitoblar", price=99000, post_ids=[])
+    db.upsert_ad(ad_id="A1", page_id="P1", page_name="Sahifa", started_at="2026-11-01", variants=3,
+                 landing_url="https://x.uz/a", product_id=pid, ad_text="matn", ad_price=99000, active=1)
+    db.upsert_ad(ad_id="A1", page_id="P1", variants=5, active=1)
+    db.upsert_ad(ad_id="A2", page_id="P1", product_id=pid, active=1)
+    ads = {a["ad_id"]: a for a in db.list_ads("P1")}
+    assert ads["A1"]["variants"] == 5 and ads["A1"]["ad_text"] == "matn" and ads["A1"]["site_price"] == 99000
+    assert db.deactivate_missing_ads("P1", {"A1"}) == 1
+    assert {a["ad_id"]: a["active"] for a in db.list_ads("P1")} == {"A1": 1, "A2": 0}
+
+
+def test_control_agent_report_and_approval_card():
+    import os
+    import anthropic
+    import httpx2
+    from app.control import ControlAgent
+
+    db = DB(os.environ["DB_PATH"])
+    db.clear_control_messages()
+    acc = db.add_account(name="Nazorat", ig_user_id="ctl1", ig_username="ctl", ig_token="t", tg_chat_id="",
+                         categories="*", business_text="", settings_yaml=default_settings_yaml(), active=1)
+    conv = db.ensure_conv(acc, "u777", "mijoz777", "Aziz")
+    db.add_message(conv["id"], "user", "Narxi qancha?")
+    pid = db.upsert_product(name="Nazorat kitobi", category="Kitoblar", price=100000, post_ids=[])
+
+    replies = [
+        [{"type": "tool_use", "id": "t1", "name": "hisobot", "input": {"kunlar": 1}}],
+        [{"type": "text", "text": "Bugun 1 ta mijoz yozdi."}],
+        [{"type": "tool_use", "id": "t2", "name": "mijozga_yozish", "input": {"conv_ids": [conv["id"]], "matn": "Narxi 100 000 so'm"}},
+         {"type": "tool_use", "id": "t3", "name": "mahsulotni_ozgartirish", "input": {"product_id": pid, "narx": 90000}}],
+        [{"type": "text", "text": "Kartalarni tasdiqlang."}],
+    ]
+    bodies = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        bodies.append(body)
+        content = replies[len(bodies) - 1]
+        stop = "tool_use" if content[0]["type"] == "tool_use" else "end_turn"
+        return httpx2.Response(200, json={"id": f"m{len(bodies)}", "type": "message", "role": "assistant",
+                                          "model": "claude-opus-5-5", "content": content, "stop_reason": stop,
+                                          "stop_sequence": None, "usage": {"input_tokens": 5, "output_tokens": 5}})
+
+    sent = []
+
+    class FakeAgent:
+        ai = AI("k", "claude-opus-5-5", "low")
+        def dm_window_open(self, cid): return True
+        async def send_operator_message(self, cid, text):
+            sent.append((cid, text)); return True
+        def reload(self): pass
+
+    FakeAgent.ai.client = anthropic.AsyncAnthropic(api_key="k", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler)))
+    ctl = ControlAgent(db, FakeAgent(), tg=None)
+
+    out = asyncio.run(ctl.chat("Bugungi hisobot"))
+    assert [m["role"] for m in out] == ["user", "assistant"] and "1 ta mijoz" in out[-1]["text"]
+    tool_result = bodies[1]["messages"][-1]["content"][0]
+    assert tool_result["type"] == "tool_result" and '"yozgan_mijozlar": 1' in tool_result["content"]
+    assert {t["name"] for t in bodies[0]["tools"]} >= {"hisobot", "mijozga_yozish", "sozlamani_ozgartirish"}
+
+    out = asyncio.run(ctl.chat("Unga narxni yozib qo'y va narxni 90 mingga tushir"))
+    cards = [m for m in out if m["role"] == "action"]
+    assert len(cards) == 2 and all(c["action_status"] == "kutilmoqda" for c in cards)
+    assert not sent and db.get_product(pid)["price"] == 100000  # tasdiqsiz hech narsa bajarilmaydi
+    assert "100 000 so'm → 90 000 so'm" in cards[1]["details"]
+    # history: oldingi karta Claude'ga tizim izohi sifatida boradi
+    assert "Tasdiq kartasi" in json.dumps(bodies[3]["messages"], ensure_ascii=False)
+
+    asyncio.run(ctl.decide(cards[0]["action_id"], True))
+    asyncio.run(ctl.decide(cards[1]["action_id"], False))
+    assert sent == [(conv["id"], "Narxi 100 000 so'm")]
+    assert db.get_product(pid)["price"] == 100000
+    assert db.get_control_action(cards[0]["action_id"])["status"] == "bajarildi"
+    assert db.get_control_action(cards[1]["action_id"])["status"] == "rad etildi"
+    notes = [m["text"] for m in db.control_messages() if m["role"] == "note"]
+    assert any(n.startswith("✅ Bajarildi") for n in notes) and any(n.startswith("❌ Rad etildi") for n in notes)
+
+
+def test_control_setting_change_validates_key():
+    import os
+    from app.control import ControlAgent
+    import yaml as _yaml
+
+    db = DB(os.environ["DB_PATH"])
+    acc = db.add_account(name="Sozlama", ig_user_id="s1", ig_username="s", ig_token="t", tg_chat_id="", categories="*",
+                         business_text="", settings_yaml=default_settings_yaml(), active=1)
+
+    class A:
+        ai = None
+        def reload(self): pass
+    ctl = ControlAgent(db, A(), tg=None)
+    with pytest.raises(ValueError):
+        ctl._prepare_action("sozlamani_ozgartirish", {"profil_id": acc, "kalit": "yoq.narsa", "qiymat": 1})
+    title, details, args = ctl._prepare_action("sozlamani_ozgartirish", {"profil_id": acc, "kalit": "komment.yoqilgan", "qiymat": "false"})
+    assert args["qiymat"] is False and "True → False" in details
+    asyncio.run(ctl._execute("sozlamani_ozgartirish", args))
+    assert _yaml.safe_load(db.get_account(acc)["settings_yaml"])["komment"]["yoqilgan"] is False

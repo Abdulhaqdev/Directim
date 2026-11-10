@@ -1,0 +1,398 @@
+{% extends "base.html" %}{% from "_icons.html" import icon %}{% block body %}
+<style>
+/* ---------- Sahna ---------- */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;height:calc(100vh - 96px);min-height:620px}
+.conv,.hero{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);min-height:0}
+.conv{display:flex;flex-direction:column;padding:18px 18px 14px;position:relative;overflow:hidden}
+.conv-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4px 12px;border-bottom:1px solid var(--line)}
+.conv-head h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.conv-head p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.pend{display:none;align-items:center;gap:6px;border:1px solid var(--warn);color:var(--warn);background:var(--warn-soft);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+.pend.on{display:inline-flex}
+.newchat{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:99px;padding:6px 12px;font-size:12.5px;cursor:pointer}
+.newchat:hover{border-color:var(--accent)}
+.newchat .ic{width:14px;height:14px}
+
+/* ---------- Chat ---------- */
+.stage .chat{flex:1;max-height:none;min-height:0;padding:16px 4px 8px;gap:12px;scroll-behavior:smooth}
+.bubble.me{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:6px;box-shadow:0 6px 16px -8px var(--accent)}
+@media (prefers-color-scheme:dark){.bubble.me{color:#062a1e}}
+.botrow{display:flex;gap:10px;align-items:flex-end;align-self:flex-start;max-width:86%}
+.bubble.bot{background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:6px;max-width:none}
+.bubble.bot .who{display:block;font-size:11.5px;font-weight:650;color:var(--accent);margin-bottom:2px}
+.note{align-self:center;font-size:12.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:4px 12px;max-width:92%;text-align:center}
+.acard{align-self:flex-start;margin-left:38px;width:min(calc(100% - 38px),520px);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:14px;padding:12px 14px;background:var(--surface);box-shadow:0 8px 24px -16px rgba(15,23,42,.35)}
+.acard.done{border-left-color:var(--accent)}.acard.no{border-left-color:var(--faint);opacity:.85}.acard.err{border-left-color:var(--danger)}
+.acard.flash{animation:flash 1.2s}
+@keyframes flash{30%{box-shadow:0 0 0 4px var(--warn-soft)}}
+.acard .t{font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.acard .d{white-space:pre-wrap;font-size:13px;color:var(--muted);margin-top:6px;max-height:220px;overflow:auto}
+.acard .r{font-size:12.5px;margin-top:6px}
+.typing{display:flex;gap:10px;align-items:center;align-self:flex-start;color:var(--muted);font-size:13px}
+.typing .dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:3px;animation:b 1s infinite}
+.typing .dots span:nth-child(2){animation-delay:.15s}.typing .dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+
+/* Bo'sh holat */
+.welcome{margin:auto;max-width:560px;width:100%;text-align:center;padding:10px 6px}
+.welcome h2{font-size:20px;margin:0 0 4px}
+.welcome p{color:var(--muted);margin:0 0 18px;font-size:13.5px}
+.sugg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;text-align:left}
+.sugg button{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface-2);transition:border-color .15s,transform .15s,box-shadow .15s}
+.sugg button:hover,.sugg button:focus-visible{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 24px -16px var(--accent)}
+.sugg b{display:block;font-size:13.5px;margin-bottom:3px}
+.sugg span{font-size:12.5px;color:var(--muted)}
+.lock{margin-top:14px;font-size:12px;color:var(--faint)}
+
+/* Yozish paneli */
+.bar{display:flex;align-items:flex-end;gap:8px;border:1.5px solid var(--line);border-radius:20px;padding:6px;background:var(--surface);transition:border-color .15s,box-shadow .15s;margin-top:8px}
+.bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.bar textarea{border:0;background:transparent;box-shadow:none;min-height:40px;max-height:160px;resize:none;padding:10px 6px;outline:none}
+.bar textarea:focus{box-shadow:none}
+.ibtn{width:40px;height:40px;border-radius:14px;flex:none;display:grid;place-items:center;border:0;cursor:pointer;background:transparent;color:var(--muted)}
+.ibtn:hover{background:var(--surface-2);color:var(--text)}
+.ibtn.go{background:var(--accent);color:#fff}.ibtn.go:hover{background:var(--accent-strong);color:#fff}
+.ibtn:disabled{opacity:.5;cursor:default}
+.ibtn.rec{background:var(--danger);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.45)}70%{box-shadow:0 0 0 10px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:0 6px;font-size:12px;color:var(--muted)}
+.lang{width:auto;padding:4px 8px;font-size:12px;border-radius:99px}
+
+/* ---------- Agent (o'ng panel) ---------- */
+.hero{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px 20px 20px;text-align:center;
+  background:radial-gradient(120% 70% at 50% 18%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 62%),var(--surface)}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background-image:radial-gradient(color-mix(in srgb,var(--accent) 35%,transparent) 1px,transparent 1.2px);background-size:18px 18px;
+  -webkit-mask-image:radial-gradient(60% 45% at 50% 28%,#000,transparent);mask-image:radial-gradient(60% 45% at 50% 28%,#000,transparent)}
+.hero>*{position:relative}
+.agava{width:210px;height:236px;position:relative;display:grid;place-items:center;cursor:pointer;margin-top:4px}
+.agava .orbit{position:absolute;left:50%;top:44%;border-radius:50%;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,transparent);transform:translate(-50%,-50%)}
+.agava .o1{width:200px;height:200px;animation:spin 40s linear infinite}
+.agava .o2{width:160px;height:160px;border-style:solid;border-color:color-mix(in srgb,var(--accent) 18%,transparent);animation:spin 26s linear infinite reverse}
+.agava .o1::after{content:"";position:absolute;top:-5px;left:50%;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.agava .glow{position:absolute;left:50%;top:44%;width:150px;height:150px;border-radius:50%;transform:translate(-50%,-50%);background:color-mix(in srgb,var(--accent) 28%,transparent);filter:blur(34px);transition:background .3s}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.hero[data-state=listen] .glow{background:rgba(255,107,107,.38)}
+.hero[data-state=think] .o1{animation-duration:6s}.hero[data-state=think] .o2{animation-duration:4s}
+.hero[data-state=happy] .glow{background:color-mix(in srgb,var(--accent) 50%,transparent)}
+.hero[data-state=sad] .glow{background:rgba(148,163,184,.35)}
+.agava .face{width:178px;height:228px;position:relative}
+.hname{font-size:22px;font-weight:700;letter-spacing:-.015em;margin-top:2px;display:flex;align-items:center;gap:8px}
+.live{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--accent-text);background:var(--accent-soft);border-radius:99px;padding:3px 9px}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);animation:blinkdot 2s infinite}
+@keyframes blinkdot{50%{opacity:.35}}
+.hstatus{color:var(--muted);font-size:13.5px;margin-top:4px;min-height:20px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;margin-top:16px}
+.kpi{all:unset;box-sizing:border-box;cursor:pointer;text-align:left;border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:blur(6px);transition:border-color .15s,transform .15s}
+.kpi:hover,.kpi:focus-visible{border-color:var(--accent);transform:translateY(-1px)}
+.kpi .n{font-size:22px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11.5px;color:var(--muted);margin-top:2px}
+.kpi.warn .n{color:var(--warn)}
+.talkwrap{margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.talk{width:64px;height:64px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--accent);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 10%,transparent),0 10px 24px -12px rgba(15,23,42,.35);transition:transform .15s}
+.talk:hover{transform:scale(1.05)}.talk .ic{width:26px;height:26px}
+.talk:disabled{opacity:.5;cursor:default;transform:none}
+.talk.rec{background:var(--danger);color:#fff;border-color:transparent;animation:pulse 1.2s infinite}
+.wave{display:none;gap:3px;align-items:center;height:26px}
+.talk.rec .wave{display:flex}.talk.rec .ic{display:none}
+.wave i{width:3px;border-radius:2px;background:#fff;animation:wv .9s ease-in-out infinite}
+.wave i:nth-child(1){height:8px}.wave i:nth-child(2){height:18px;animation-delay:.1s}.wave i:nth-child(3){height:24px;animation-delay:.2s}.wave i:nth-child(4){height:14px;animation-delay:.3s}.wave i:nth-child(5){height:9px;animation-delay:.4s}
+@keyframes wv{50%{transform:scaleY(.4)}}
+.pills{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.pill{all:unset;cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,background .15s}
+.pill:hover,.pill:focus-visible{border-color:var(--accent);background:var(--accent-soft)}
+.pill .c{background:var(--warn-soft);color:var(--warn);border-radius:99px;padding:0 7px;font-size:12px}
+
+/* ---------- Yuz (SVG) ---------- */
+.face{display:block;overflow:visible}
+.hero .face{animation:float 4.5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-4px)}}
+.face .head{fill:var(--accent)}
+.face .hs,.face .suit{fill:#2f3d39}.face .band,.face .boom{fill:none;stroke:#2f3d39;stroke-linecap:round}.face .band{stroke-width:5}.face .boom{stroke-width:3.5}
+@media (prefers-color-scheme:dark){.face .hs,.face .suit{fill:#55645f}.face .band,.face .boom{stroke:#55645f}}
+.face .shirt{fill:#fff}.face .tie{fill:var(--accent)}.face .badge{fill:#0c2620}.face .badge-t{fill:#86f3cc;font:700 6.5px system-ui,sans-serif}
+.face .shine{fill:#fff;opacity:.22}
+.face .screen{fill:#0c2620}
+.face .eye{fill:#86f3cc;transform-box:fill-box;transform-origin:center;animation:blink 4.6s infinite;transition:transform .25s}
+@keyframes blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.1)}}
+.face .eyes-happy path,.face .m{stroke:#86f3cc;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.face .m-big,.face .m-talk{fill:#86f3cc}.face .m-talk{stroke:none;transform-box:fill-box;transform-origin:center}
+.face .cheek{fill:#ff8fa3;opacity:.35}
+.face .bulb{fill:#ffd166;transition:fill .2s}
+.face .rings circle{fill:none;stroke:#ff6b6b;stroke-width:1.5;opacity:0;transform-box:view-box;transform-origin:50px 52px}
+.face .look{transition:transform .12s linear}.face .gaze{transition:transform .35s ease}
+.face .eyes-happy,.face .m{display:none}.face .m-smile{display:inline}
+.face[data-state=listen] .eye{animation:none;transform:scale(1.18)}
+.face[data-state=listen] .bulb{fill:#ff6b6b;animation:bulb .5s infinite alternate}
+.face[data-state=listen] .rings circle{animation:ring 1.6s infinite}
+.face[data-state=listen] .rings circle+circle{animation-delay:.8s}
+@keyframes ring{0%{opacity:.6;transform:scale(.9)}100%{opacity:0;transform:scale(1.3)}}
+.face[data-state=think] .gaze{transform:translate(3px,-4px)}
+.face[data-state=think] .bulb{animation:bulb .7s infinite alternate}
+@keyframes bulb{to{opacity:.25}}
+.face[data-state=think] .m-smile,.face[data-state=talk] .m-smile,.face[data-state=happy] .m-smile,.face[data-state=sad] .m-smile{display:none}
+.face[data-state=think] .m-flat{display:inline}
+.face[data-state=talk] .m-talk{display:inline;animation:talk .22s infinite alternate}
+@keyframes talk{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+.face[data-state=happy] .eyes-open{display:none}.face[data-state=happy] .eyes-happy{display:inline}
+.face[data-state=happy] .m-big{display:inline}.face[data-state=happy] .cheek{opacity:.7}
+.face[data-state=sad] .m-sad{display:inline}.face[data-state=sad] .gaze{transform:translateY(3px)}
+.face[data-state=sad] .bulb{fill:#9aa4ad}
+.face.mini{width:28px;height:28px;flex:none}.face.mini *{animation:none!important}
+
+/* ---------- Kichik ekranlar ---------- */
+@media (max-width:1080px){
+  .stage{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}
+  .hero{order:-1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;text-align:left;gap:4px 14px;padding:14px 16px}
+  .agava{width:84px;height:94px;margin:0;grid-row:span 2}
+  .agava .o1{width:88px;height:88px}.agava .o2{width:70px;height:70px}.agava .glow{width:70px;height:70px;filter:blur(18px)}
+  .agava .face{width:72px;height:92px}
+  .hname{font-size:17px;margin:0}.hstatus{margin:0;font-size:12.5px}
+  .talkwrap{grid-row:span 2;margin:0}.talkwrap span{display:none}.talk{width:52px;height:52px}
+  .kpis{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px}
+  .kpi .n{font-size:18px}
+  .pills{grid-column:1/-1;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin:0;padding-top:10px;scrollbar-width:none}
+  .pill{flex:none}
+  .conv{height:calc(100vh - 120px);min-height:520px}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sugg{grid-template-columns:minmax(0,1fr)}
+  .conv{padding:14px 12px 12px}
+  .conv-head p{display:none}
+  .botrow{max-width:94%}
+}
+@media (prefers-reduced-motion:reduce){.face,.face *,.agava *,.hero *{animation:none!important;transition:none!important}}
+</style>
+
+{% if not setup.claude %}<div class="alert warn">⚠️ <div>Claude kaliti kiritilmagan — agent javob bera olmaydi. <a class="strong" href="/ulanishlar#claude">Ulanishlar → Claude</a></div></div>{% endif %}
+<form id="clearForm" method="post" action="/boshqaruv/tozalash" hidden></form>
+
+<div class="stage">
+  <section class="conv">
+    <div class="conv-head">
+      <div><h1>Boshqaruv agenti</h1><p>Yozing yoki gapiring — har bir o'zgarish tasdiqingizdan keyin bajariladi</p></div>
+      <div class="row" style="gap:8px">
+        <button class="pend" id="pend" type="button">⏳ <span id="pendN">0</span> ta tasdiq kutmoqda</button>
+        <button class="newchat" id="newchat" type="button" title="Suhbat tarixini tozalash">{{ icon('plus') }}<span>Yangi suhbat</span></button>
+      </div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="bar">
+      <textarea id="input" rows="1" placeholder="Buyruq yoki savol yozing…" title="Enter — yuborish, Shift+Enter — yangi qator"></textarea>
+      <button class="ibtn" id="mic" type="button" title="Ovoz bilan gapirish">{{ icon('mic') }}</button>
+      <button class="ibtn go" id="send" type="button" title="Yuborish">{{ icon('send') }}</button>
+    </div>
+    <div class="foot">
+      <span id="micHint">🎙 Mikrofonni bosing va gapiring — gapingiz matnga aylanib yuboriladi.</span>
+      <select id="lang" class="lang" title="Ovoz tili"><option value="uz-UZ">O'zbekcha</option><option value="ru-RU">Русский</option></select>
+    </div>
+  </section>
+
+  <aside class="hero" id="hero" data-state="idle">
+    <div class="agava" id="avatar" title="Bosing va gapiring">
+      <div class="glow"></div><div class="orbit o1"></div><div class="orbit o2"></div>
+    </div>
+    <div>
+      <div class="hname">Yordamchi <span class="live">onlayn</span></div>
+      <div class="hstatus" id="faceStatus">Tayyorman — yozing yoki gapiring</div>
+    </div>
+    <div class="talkwrap">
+      <button class="talk" id="talk" type="button" title="Gapirish">{{ icon('mic') }}<span class="wave"><i></i><i></i><i></i><i></i><i></i></span></button>
+      <span>Gapirish</span>
+    </div>
+    <div class="kpis">
+      <button class="kpi" type="button" data-q="Bugungi hisobotni ber"><div class="n">{{ stats.yozgan_mijozlar }}</div><div class="l">bugun yozgan mijoz</div></button>
+      <button class="kpi" type="button" data-q="Bugungi lidlarni ko'rsat"><div class="n">{{ stats.lidlar }}</div><div class="l">bugungi lid</div></button>
+      <button class="kpi {{ 'warn' if stats.javobsiz_savollar }}" type="button" data-q="Javobsiz savollarni ko'rsat"><div class="n">{{ stats.javobsiz_savollar }}</div><div class="l">javobsiz savol</div></button>
+      <button class="kpi {{ 'warn' if stats.operator_kerak_dialoglar }}" type="button" data-q="Operator kerak bo'lgan dialoglarni ko'rsat"><div class="n">{{ stats.operator_kerak_dialoglar }}</div><div class="l">operator kutmoqda</div></button>
+    </div>
+    <div class="pills">
+      <button class="pill" type="button" data-q="Bugungi hisobotni ber">📊 Hisobot</button>
+      <button class="pill" type="button" data-q="Muammolar bormi?">🔎 Muammolar</button>
+      <button class="pill" type="button" data-q="Javob kutayotgan mijozlar kimlar?">⏳ Javob kutayotganlar</button>
+      <button class="pill" type="button" data-q="Oxirgi 7 kunlik lidlar">🎯 Lidlar</button>
+      <button class="pill" type="button" data-q="Qaysi mahsulot ko'p reklama qilinyapti?">📣 Reklamalar</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var msgs = {{ messages_json|safe }};
+  var chat = document.getElementById('chat'), input = document.getElementById('input'), sendBtn = document.getElementById('send');
+  var hero = document.getElementById('hero'), busy = false;
+  var STATUS = {"kutilmoqda":["Tasdiq kutilmoqda","warn",""],"bajarildi":["Bajarildi","ok","done"],"rad etildi":["Rad etildi","","no"],"xato":["Bajarilmadi","danger","err"]};
+
+  // ---- Agent yuzi: holatlar — idle, listen, think, talk, happy, sad ----
+  function faceSVG(cls, body){
+    return '<svg class="face ' + cls + '" viewBox="0 0 100 ' + (body ? 128 : 100) + '" aria-hidden="true">'
+      + (body ? '<path class="suit" d="M4 128 C6 104 24 95 50 95 C76 95 94 104 96 128 Z"/><path class="shirt" d="M40 95 L50 111 L60 95 Z"/>'
+          + '<path class="tie" d="M47.6 98 L52.4 98 L54 115 L50 120 L46 115 Z"/><rect class="badge" x="64" y="106" width="16" height="10" rx="3"/>'
+          + '<text class="badge-t" x="72" y="113.4" text-anchor="middle">AI</text>' : '')
+      + '<g class="rings"><circle cx="50" cy="52" r="46"/><circle cx="50" cy="52" r="46"/></g>'
+      + '<path class="band" d="M7 50 Q7 5 50 5 Q93 5 93 50"/>'
+      + '<rect class="head" x="9" y="15" width="82" height="74" rx="30"/><ellipse class="shine" cx="33" cy="25" rx="15" ry="5"/>'
+      + '<rect class="hs" x="0" y="38" width="15" height="28" rx="7.5"/><rect class="hs" x="85" y="38" width="15" height="28" rx="7.5"/>'
+      + '<rect class="screen" x="19" y="30" width="62" height="46" rx="21"/>'
+      + '<path class="boom" d="M8 64 Q9 84 34 84"/><circle class="bulb" cx="36" cy="84" r="4.2"/>'
+      + '<g class="look"><g class="gaze"><g class="eyes-open"><ellipse class="eye" cx="38" cy="49" rx="6" ry="8"/><ellipse class="eye" cx="62" cy="49" rx="6" ry="8"/></g>'
+      + '<g class="eyes-happy"><path d="M31 52 Q38 42 45 52"/><path d="M55 52 Q62 42 69 52"/></g></g></g>'
+      + '<circle class="cheek" cx="27" cy="64" r="4"/><circle class="cheek" cx="73" cy="64" r="4"/>'
+      + '<path class="m m-smile" d="M43 63 Q50 69 57 63"/><path class="m m-big" d="M40 61 Q50 73 60 61 Z"/>'
+      + '<path class="m m-flat" d="M44 65 H56"/><path class="m m-sad" d="M43 68 Q50 62 57 68"/>'
+      + '<ellipse class="m m-talk" cx="50" cy="65" rx="5" ry="4.5"/></svg>';
+  }
+  var avatar = document.getElementById('avatar'), faceStatus = document.getElementById('faceStatus');
+  avatar.insertAdjacentHTML('beforeend', faceSVG('', true));
+  var face = avatar.querySelector('svg'), look = face.querySelector('.look'), faceTimer = null;
+  var FACE_TEXT = {idle:'Tayyorman — yozing yoki gapiring', listen:'Tinglayapman…', think:'O\'ylayapman…', talk:'Javob berdim', happy:'Bajarildi!', sad:'Nimadir xato ketdi'};
+  function setFace(s, ms){
+    clearTimeout(faceTimer); face.dataset.state = s; hero.dataset.state = s; faceStatus.textContent = FACE_TEXT[s];
+    if (ms) faceTimer = setTimeout(function(){ setFace('idle'); }, ms);
+  }
+  setFace('idle');
+  var raf = 0;
+  document.addEventListener('mousemove', function(e){  // ko'zlar sichqonchaga qaraydi
+    if (raf) return;
+    raf = requestAnimationFrame(function(){
+      raf = 0; var r = face.getBoundingClientRect();
+      var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.35), d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260);
+      look.style.transform = 'translate(' + (dx / d * 3.5 * k).toFixed(2) + 'px,' + (dy / d * 2.5 * k).toFixed(2) + 'px)';
+    });
+  });
+
+  // ---- Chat ----
+  function md(t){  // xavfsiz: avval HTML'ni qochiramiz, keyin faqat **qalin** va `kod`
+    var s = String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return s.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  }
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  function card(m){
+    var st = STATUS[m.status] || STATUS["kutilmoqda"];
+    var c = el('div', 'acard ' + st[2]); c.dataset.action = m.action_id; c.dataset.status = m.status || 'kutilmoqda';
+    var t = el('div', 't'); t.appendChild(el('span', '', '🔒 ' + (m.title || m.text)));
+    t.appendChild(el('span', 'badge ' + st[1], st[0])); c.appendChild(t);
+    if (m.details) c.appendChild(el('div', 'd', m.details));
+    if (m.result && m.status !== 'kutilmoqda') c.appendChild(el('div', 'r muted', m.result));
+    if (m.status === 'kutilmoqda') {
+      var row = el('div', 'row'); row.style.marginTop = '10px';
+      var yes = el('button', 'btn sm', 'Tasdiqlash'), no = el('button', 'btn sm ghost', 'Rad etish');
+      yes.type = no.type = 'button';
+      yes.onclick = function(){ decide(m, true, row); }; no.onclick = function(){ decide(m, false, row); };
+      row.appendChild(yes); row.appendChild(no); c.appendChild(row);
+    }
+    return c;
+  }
+  var SUGG = [
+    ['📊 Hisobot', 'Bugungi hisobotni ber'],
+    ['✉️ Mijozlarga xabar', 'Javob kutayotgan mijozlarga yozib qo\'y'],
+    ['🛍 Narx va katalog', 'Mukoshafatul qulub narxini 149 000 qil'],
+    ['🧠 Bilim', 'Javobsiz savollarni ko\'rsat']
+  ];
+  function welcome(){
+    var w = el('div', 'welcome');
+    w.appendChild(el('h2', '', 'Salom! Bugun nima qilamiz?'));
+    w.appendChild(el('p', '', 'Men platformangizni boshqaraman: hisobot beraman, muammolarni topaman, mijozlarga yozaman va katalogni yangilayman.'));
+    var g = el('div', 'sugg');
+    SUGG.forEach(function(s){
+      var b = el('button'); b.type = 'button'; b.appendChild(el('b', '', s[0])); b.appendChild(el('span', '', '«' + s[1] + '»'));
+      b.onclick = function(){ send(s[1]); }; g.appendChild(b);
+    });
+    w.appendChild(g);
+    w.appendChild(el('div', 'lock', '🔒 O\'zgartiradigan har bir amal uchun tasdiq kartasi chiqadi — siz bosmaguningizcha hech narsa o\'zgarmaydi.'));
+    return w;
+  }
+  function render(){
+    chat.innerHTML = '';
+    if (!msgs.length) chat.appendChild(welcome());
+    msgs.forEach(function(m){
+      if (m.role === 'user') chat.appendChild(el('div', 'bubble me', m.text));
+      else if (m.role === 'assistant') {
+        var row = el('div', 'botrow'); row.innerHTML = faceSVG('mini');
+        var b = el('div', 'bubble bot'); b.innerHTML = '<span class="who">Yordamchi</span>' + md(m.text); row.appendChild(b); chat.appendChild(row);
+      }
+      else if (m.role === 'action') chat.appendChild(card(m));
+      else chat.appendChild(el('div', 'note', m.text));
+    });
+    if (busy) { var t = el('div', 'typing'); t.innerHTML = faceSVG('mini') + '<span class="dots"><span></span><span></span><span></span></span> agent ishlayapti…'; chat.appendChild(t); }
+    chat.scrollTop = chat.scrollHeight;
+    var n = msgs.filter(function(m){ return m.role === 'action' && (m.status || 'kutilmoqda') === 'kutilmoqda'; }).length;
+    document.getElementById('pendN').textContent = n; document.getElementById('pend').classList.toggle('on', n > 0);
+  }
+  document.getElementById('pend').onclick = function(){
+    var c = chat.querySelector('.acard[data-status="kutilmoqda"]');
+    if (c) { c.scrollIntoView({block: 'center'}); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+  };
+  document.getElementById('newchat').onclick = function(){
+    if (confirm('Suhbat tarixi tozalansinmi? Tasdiqlanmagan kartalar bekor bo\'ladi.')) document.getElementById('clearForm').submit();
+  };
+  function post(url, body){
+    return fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) throw new Error('Server xatosi ' + r.status); return r.json(); });
+  }
+  function send(text){
+    text = (text || '').trim();
+    if (!text || busy) return;
+    busy = true; sendBtn.disabled = true; input.value = ''; autosize();
+    var temp = {id: 'tmp', role: 'user', text: text}; msgs.push(temp); render(); setFace('think');
+    post('/boshqaruv/xabar', {matn: text}).then(function(d){
+      msgs = msgs.filter(function(m){ return m !== temp; }).concat(d.messages);
+      setFace('talk', 2200);
+    }).catch(function(e){ msgs.push({role:'note', text:'⚠️ ' + e.message}); setFace('sad', 3500); })
+      .finally(function(){ busy = false; sendBtn.disabled = false; render(); input.focus({preventScroll: true}); });
+  }
+  function decide(m, yes, row){
+    row.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+    setFace('think');
+    post('/boshqaruv/amal/' + m.action_id, {tasdiq: yes}).then(function(d){
+      if (d.status === 'bajarildi') setFace('happy', 2600); else if (d.status === 'xato') setFace('sad', 3500); else setFace('idle');
+      msgs.forEach(function(x){ if (x.action_id === m.action_id && x.role === 'action') { x.status = d.status; x.result = d.result; } });
+      var known = {}; msgs.forEach(function(x){ known[x.id] = 1; });
+      d.messages.forEach(function(x){ if (!known[x.id]) msgs.push(x); });
+      render();
+    }).catch(function(e){ msgs.push({role:'note', text:'⚠️ ' + e.message}); setFace('sad', 3500); render(); });
+  }
+  function autosize(){ input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
+  input.addEventListener('input', autosize);
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); } });
+  sendBtn.onclick = function(){ send(input.value); };
+  document.querySelectorAll('[data-q]').forEach(function(b){ b.onclick = function(){ send(b.dataset.q); }; });
+
+  // ---- Ovoz → matn (brauzerning nutq tanish xizmati; Chrome va Safari'da ishlaydi) ----
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, mic = document.getElementById('mic'), talk = document.getElementById('talk');
+  var hint = document.getElementById('micHint'), lang = document.getElementById('lang');
+  var IDLE_HINT = '🎙 Mikrofonni bosing va gapiring — gapingiz matnga aylanib yuboriladi.';
+  try { lang.value = localStorage.getItem('ctl_lang') || 'uz-UZ'; } catch(e) {}
+  lang.onchange = function(){ try { localStorage.setItem('ctl_lang', lang.value); } catch(e) {} };
+  if (!SR) { mic.disabled = talk.disabled = true; hint.textContent = '🎙 Bu brauzerda ovoz bilan yozish ishlamaydi — Chrome yoki Safari\'da oching.'; }
+  else {
+    var rec = null, finalText = '', recording = false;
+    var toggle = function(){
+      if (recording) { rec.stop(); return; }
+      if (busy) return;
+      rec = new SR(); rec.lang = lang.value; rec.interimResults = true; rec.continuous = true; finalText = '';
+      rec.onresult = function(ev){
+        var interim = '';
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          if (ev.results[i].isFinal) finalText += ev.results[i][0].transcript + ' ';
+          else interim += ev.results[i][0].transcript;
+        }
+        input.value = (finalText + interim).trim(); autosize();
+      };
+      rec.onerror = function(ev){ setFace('sad', 3500); hint.textContent = ev.error === 'not-allowed' ? '🎙 Mikrofonga ruxsat berilmadi — brauzer sozlamasida ruxsat bering.' : '🎙 Ovozni tanib bo\'lmadi (' + ev.error + ').'; };
+      rec.onend = function(){
+        recording = false; mic.classList.remove('rec'); talk.classList.remove('rec'); hint.textContent = IDLE_HINT;
+        if (input.value.trim()) send(input.value);
+        else if (face.dataset.state === 'listen') setFace('idle');
+      };
+      rec.start(); recording = true; mic.classList.add('rec'); talk.classList.add('rec'); setFace('listen');
+      hint.textContent = '🔴 Gapiring… tugatgach mikrofonni yana bosing.';
+    };
+    mic.onclick = talk.onclick = avatar.onclick = toggle;
+  }
+  render(); if (innerWidth > 1080) input.focus({preventScroll: true});
+})();
+</script>
+{% endblock %}

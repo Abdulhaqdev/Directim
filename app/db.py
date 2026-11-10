@@ -125,6 +125,39 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS ads (           -- Meta Ad Library'dan yig'ilgan reklamalar
+    ad_id TEXT PRIMARY KEY,                 -- Ad Library ID
+    page_id TEXT,
+    page_name TEXT,
+    instagram TEXT,
+    started_at TEXT,                        -- reklama boshlangan sana
+    variants INTEGER DEFAULT 1,             -- shu kreativ nechta reklamada ishlatilgan
+    landing_url TEXT,                       -- reklama olib boradigan sahifa
+    product_id INTEGER,                     -- products jadvalidagi mahsulot
+    ad_text TEXT,
+    ad_price INTEGER,                       -- reklama matnidagi narx
+    ad_old_price INTEGER,
+    active INTEGER DEFAULT 1,
+    collected_at TEXT
+);
+CREATE TABLE IF NOT EXISTS control_messages (   -- «Boshqaruv agenti» suhbati (egasi ↔ agent)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT,                                  -- user | assistant | note
+    text TEXT,
+    action_id INTEGER,                          -- tasdiq kartasi (bo'lsa)
+    created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS control_actions (    -- tasdiq kutayotgan / bajarilgan amallar
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool TEXT,
+    args TEXT,
+    title TEXT,                                 -- kartadagi sarlavha
+    details TEXT,                               -- kartadagi tafsilot (yuboriladigan matn va h.k.)
+    status TEXT DEFAULT 'kutilmoqda',           -- kutilmoqda | bajarildi | rad etildi | xato
+    result TEXT,
+    created_at TEXT,
+    decided_at TEXT
+);
 """
 
 PRODUCT_FIELDS = ("name", "category", "price", "price_note", "description", "variants", "in_stock",
@@ -274,6 +307,97 @@ class DB:
         self.upsert_product(name=name, category=category, price=price, old_price=old_price, description=description,
                             image_url=image_url, source_url=source_url, source=source, in_stock=1, post_ids=[])
         return True
+
+    # --- Boshqaruv agenti ---
+    def add_control_message(self, role: str, text: str, action_id: int | None = None) -> int:
+        cur = self._exec("INSERT INTO control_messages(role, text, action_id, created_at) VALUES (?,?,?,?)",
+                         (role, text, action_id, iso()))
+        return int(cur.lastrowid)
+
+    def control_messages(self, limit: int = 200, after_id: int = 0) -> list[dict]:
+        rows = self._all("SELECT m.*, a.tool, a.title, a.details, a.status AS action_status, a.result AS action_result "
+                         "FROM control_messages m LEFT JOIN control_actions a ON a.id=m.action_id "
+                         "WHERE m.id>? ORDER BY m.id DESC LIMIT ?", (after_id, limit))
+        return rows[::-1]
+
+    def clear_control_messages(self) -> None:
+        self._exec("DELETE FROM control_messages")
+        self._exec("UPDATE control_actions SET status='rad etildi', result='suhbat tozalandi', decided_at=? "
+                   "WHERE status='kutilmoqda'", (iso(),))
+
+    def add_control_action(self, tool: str, args: dict, title: str, details: str) -> int:
+        cur = self._exec("INSERT INTO control_actions(tool, args, title, details, created_at) VALUES (?,?,?,?,?)",
+                         (tool, json.dumps(args, ensure_ascii=False), title, details, iso()))
+        return int(cur.lastrowid)
+
+    def get_control_action(self, action_id: int) -> dict | None:
+        row = self._one("SELECT * FROM control_actions WHERE id=?", (action_id,))
+        if row:
+            row["args"] = json.loads(row.get("args") or "{}")
+        return row
+
+    def set_control_action(self, action_id: int, status: str, result: str) -> None:
+        self._exec("UPDATE control_actions SET status=?, result=?, decided_at=? WHERE id=?",
+                   (status, result, iso(), action_id))
+
+    def period_report(self, days: float = 1, account_id: int | None = None) -> list[dict]:
+        """Boshqaruv agenti hisoboti: har bir profil bo'yicha davr ko'rsatkichlari."""
+        since = iso(now() - timedelta(days=days))
+        out = []
+        for acc in self.list_accounts():
+            if account_id and acc["id"] != account_id:
+                continue
+            a = acc["id"]
+            one = lambda sql, *args: self._one(sql, args)["n"]  # noqa: E731
+            leads = {r["status"] or "yangi": r["n"] for r in self._all(
+                "SELECT status, COUNT(*) AS n FROM leads WHERE account_id=? AND created_at>=? GROUP BY status", (a, since))}
+            comments = {r["category"] or "?": r["n"] for r in self._all(
+                "SELECT category, COUNT(*) AS n FROM comments WHERE account_id=? AND created_at>=? GROUP BY category",
+                (a, since))}
+            out.append({
+                "profil_id": a, "profil": acc["name"], "instagram": acc.get("ig_username"),
+                "instagram_ulangan": bool(acc.get("ig_user_id") and acc.get("ig_token")), "faol": bool(acc.get("active")),
+                "yangi_dialoglar": one("SELECT COUNT(*) AS n FROM conversations WHERE account_id=? AND created_at>=?", a, since),
+                "yozgan_mijozlar": one("SELECT COUNT(*) AS n FROM conversations WHERE account_id=? AND last_user_at>=?", a, since),
+                "mijoz_xabarlari": one("SELECT COUNT(*) AS n FROM messages m JOIN conversations c ON c.id=m.conv_id "
+                                       "WHERE c.account_id=? AND m.role='user' AND m.created_at>=?", a, since),
+                "ai_javoblari": one("SELECT COUNT(*) AS n FROM messages m JOIN conversations c ON c.id=m.conv_id "
+                                    "WHERE c.account_id=? AND m.role='assistant' AND m.created_at>=?", a, since),
+                "operator_xabarlari": one("SELECT COUNT(*) AS n FROM messages m JOIN conversations c ON c.id=m.conv_id "
+                                          "WHERE c.account_id=? AND m.role='operator' AND m.created_at>=?", a, since),
+                "lidlar": sum(leads.values()), "lid_holatlari": leads,
+                "kommentlar": sum(comments.values()), "komment_turlari": comments,
+                "operator_kerak_dialoglar": one("SELECT COUNT(*) AS n FROM conversations WHERE account_id=? AND handoff_sent=1 "
+                                                "AND last_user_at>=?", a, since),
+                "ai_toxtatilgan_dialoglar": one("SELECT COUNT(*) AS n FROM conversations WHERE account_id=? AND "
+                                                "(ai_enabled=0 OR paused_until>?)", a, iso()),
+                "javobsiz_savollar": one("SELECT COUNT(*) AS n FROM gaps WHERE account_id=? AND status='kutilmoqda'", a),
+            })
+        return out
+
+    # --- Reklamalar (Meta Ad Library) ---
+    def upsert_ad(self, **fields) -> None:
+        cols = ("ad_id", "page_id", "page_name", "instagram", "started_at", "variants", "landing_url",
+                "product_id", "ad_text", "ad_price", "ad_old_price", "active", "collected_at")
+        data = {k: fields.get(k) for k in cols if k in fields}
+        names = ", ".join(data)
+        updates = ", ".join(f"{k}=excluded.{k}" for k in data if k != "ad_id")
+        self._exec(f"INSERT INTO ads({names}) VALUES ({', '.join('?' for _ in data)}) "
+                   f"ON CONFLICT(ad_id) DO UPDATE SET {updates}", tuple(data.values()))
+
+    def deactivate_missing_ads(self, page_id: str, seen_ids: set[str]) -> int:
+        rows = self._all("SELECT ad_id FROM ads WHERE page_id=? AND active=1", (page_id,))
+        gone = [r["ad_id"] for r in rows if r["ad_id"] not in seen_ids]
+        for ad_id in gone:
+            self._exec("UPDATE ads SET active=0 WHERE ad_id=?", (ad_id,))
+        return len(gone)
+
+    def list_ads(self, page_id: str | None = None) -> list[dict]:
+        sql = ("SELECT a.*, p.name AS product_name, p.price AS site_price, p.old_price AS site_old_price "
+               "FROM ads a LEFT JOIN products p ON p.id=a.product_id")
+        if page_id:
+            return self._all(sql + " WHERE a.page_id=? ORDER BY a.started_at DESC", (page_id,))
+        return self._all(sql + " ORDER BY a.started_at DESC")
 
     def mark_missing_scraped(self, source: str, seen_urls: set[str]) -> int:
         rows = self._all("SELECT id, source_url FROM products WHERE source=? AND in_stock=1", (source,))
